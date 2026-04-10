@@ -143,17 +143,11 @@ function(_attrfl_deferred_gen target attachTarget)
             list(APPEND _gen_cmd --NOSTDINC)
         endif ()
 
-        add_custom_command(
-                OUTPUT "${generate_source}" "${stamp_file}"
+        add_custom_target(attrfl_${target}
                 COMMAND ${_gen_cmd}
                 COMMENT "attrfl: generate for ${target}"
                 WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
-                DEPENDS "${include_dirs_file}" "${flags_file}"
                 VERBATIM
-        )
-
-        add_custom_target(attrfl_${target}
-                DEPENDS "${generate_source}" "${stamp_file}"
         )
 
         foreach (_dep IN LISTS _dep_targets)
