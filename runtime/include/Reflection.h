@@ -147,17 +147,23 @@ static void __RegisterField(); \
 private:
 
 
-#ifndef __clang__
-#ifndef __attribute__
-#define __attribute__(x)
+#if defined(__has_attribute)
+#if __has_attribute(annotate)
+#define ATTRFL_ANNOTATE(x) __attribute__((annotate(x)))
+#else
+#define ATTRFL_ANNOTATE(x)
 #endif
+#elif defined(__clang__) || defined(__GNUC__)
+#define ATTRFL_ANNOTATE(x) __attribute__((annotate(x)))
+#else
+#define ATTRFL_ANNOTATE(x)
 #endif
 
-#define STRINGIFY_INNER(...) #__VA_ARGS__
-#define STRINGIFY(...)       STRINGIFY_INNER(__VA_ARGS__)
+#define ATTRFL_STRINGIFY_INNER(...) #__VA_ARGS__
+#define ATTRFL_STRINGIFY(...) ATTRFL_STRINGIFY_INNER(__VA_ARGS__)
 
-#define EFIELD_IMPL(...)  __attribute__((annotate("field:" STRINGIFY(__VA_ARGS__))))
-#define ECLASS_IMPL(...)  __attribute__((annotate("class:" STRINGIFY(__VA_ARGS__))))
+#define EFIELD_IMPL(...)  ATTRFL_ANNOTATE("field:" ATTRFL_STRINGIFY(__VA_ARGS__))
+#define ECLASS_IMPL(...)  ATTRFL_ANNOTATE("class:" ATTRFL_STRINGIFY(__VA_ARGS__))
 
 #define EFIELD(...) EFIELD_IMPL(__VA_ARGS__)
 #define ECLASS(...) ECLASS_IMPL(__VA_ARGS__)
