@@ -4,6 +4,14 @@
 #include <typeinfo>
 #include <type_traits>
 #include <mutex>
+#include <typeinfo>
+#include <typeindex>
+#include <cstring>
+#if defined(__GNUG__)
+#include <cxxabi.h>
+#include <cstdlib>
+#include <memory>
+#endif
 
 namespace attrfl
 {
@@ -61,6 +69,67 @@ namespace attrfl
         }
     };
 
+
+    inline std::string demangle(const char* name)
+    {
+#if defined(__GNUG__)
+        int status = 0;
+        char* dem = abi::__cxa_demangle(name, nullptr, nullptr, &status);
+        std::unique_ptr<char, void(*)(void*)> dem_guard(dem, &std::free);
+        if (status == 0 && dem)
+            return {dem};
+        else
+            return {name};
+#else
+        return {name};
+#endif
+    }
+
+
+    inline void strip_msvc_prefix(std::string& s)
+    {
+#ifdef _MSC_VER
+        const char* prefixes[] = { "class ", "struct ", "enum " };
+        for (auto p : prefixes)
+        {
+            if (s.rfind(p, 0) == 0) // starts with
+            {
+                s = s.substr(std::strlen(p));
+                break;
+            }
+        }
+#endif
+    }
+
+
+    inline void strip_namespace(std::string& s)
+    {
+        auto pos = s.rfind("::");
+        if (pos != std::string::npos)
+            s = s.substr(pos + 2);
+    }
+
+    template<typename T>
+    std::string GetTypeName(bool stripNamespace = false)
+    {
+        std::string name = demangle(typeid(T).name());
+        strip_msvc_prefix(name);
+        if (stripNamespace)
+            strip_namespace(name);
+        return name;
+    }
+
+    inline std::string GetTypeName(const std::type_info& ti, bool stripNamespace = false)
+    {
+        std::string name = demangle(ti.name());
+#ifdef _MSC_VER
+        strip_msvc_prefix(name);
+#endif
+        if (stripNamespace)
+            strip_namespace(name);
+        return name;
+    }
+
     template<typename T>
     class Type : public TypeClassMethods<T>
     {
@@ -80,16 +149,7 @@ namespace attrfl
 
         static TypeInfo *CreateTypeInfo()
         {
-            std::string typeName = typeid(T).name();
-
-#ifdef _MSC_VER
-            if (typeName.rfind("class ", 0) == 0)
-                typeName = typeName.substr(6);
-            else if (typeName.rfind("struct ", 0) == 0)
-                typeName = typeName.substr(7);
-            else if (typeName.rfind("enum ", 0) == 0)
-                typeName = typeName.substr(5);
-#endif
+            std::string typeName =  GetTypeName<T>(true);
 
             auto *info = new TypeInfo(
                 typeName,
